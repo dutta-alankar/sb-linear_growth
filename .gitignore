@@ -1,0 +1,19 @@
+# virtual environment
+.venv/
+
+# python
+__pycache__/
+*.pyc
+
+# logs
+*.log
+
+# arXiv paper copy and source (copyrighted; fetched from arxiv.org)
+paper.pdf
+paper_src.tar
+paper_src/
+
+# local tooling / session files
+.claude/
+2026-*.txt
+.DS_Store

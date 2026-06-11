@@ -1,0 +1,12 @@
+backend = class
+h = 0.71
+Omega_b = 0.044
+Omega_cdm = 0.226
+Omega_Lambda(flat) = 0.73 (+rad.)
+A_s = 2.1e-09
+n_s = 0.965
+k_pivot = 0.05 1/Mpc
+massless neutrinos N_ur = 3.046, no massive neutrinos
+redshifts = [1000.0, 900.0, 250.0, 200.0, 127.0, 0.0]
+kmax = 30000.0 1/Mpc
+cosmology of Shalaby & Broderick 2026 (arXiv:2604.22665)
