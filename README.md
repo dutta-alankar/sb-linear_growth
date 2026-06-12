@@ -22,7 +22,7 @@ CLASS from source):
 
 ```bash
 uv venv --python 3.12
-VIRTUAL_ENV="$PWD/.venv" uv pip install numpy scipy matplotlib camb classy
+VIRTUAL_ENV="$PWD/.venv" uv pip install numpy scipy matplotlib camb classy emcee
 ```
 
 All commands below use the venv's interpreter directly
@@ -118,6 +118,43 @@ z = 0); tightening `tol_perturbations_integration` triggers minimum-step
 failures and the alternative `evolver=0` (rk) blows up exponentially beyond
 k ≈ 2×10⁴/Mpc, so k ≳ 10⁵/Mpc is not attainable with stock classy 3.3.
 
+### `mcmc_max_enhancement.py` — find the maximally enhanced mode with emcee
+
+Explores eq. D50 over k ∈ [5×10², 10⁴]/Mpc and cosθ ∈ (0, 1) with an MCMC
+(emcee) whose ln-probability is β·ln E, where
+E = |δ_b|_drift/|δ_b|_no-drift at z_eval — so the chain concentrates on the
+(k, cosθ) combinations that maximise the Fig. 5 enhancement over the
+no-relative-drift case. Run `generate_tables.py` first.
+
+```bash
+.venv/bin/python mcmc_max_enhancement.py                  # defaults: 32x400 chain
+.venv/bin/python mcmc_max_enhancement.py --kmin 5e2 --kmax 1e4 --z-eval 0 \
+    --nwalkers 32 --nsteps 400 --burn 100 --beta 10 --backend class
+```
+
+Outputs `mcmc_enhancement_samples.png` (sample cloud in (k, cosθ) coloured
+by E, best point starred), `figure5_best_enhancement.png` (Fig. 5-style
+evolution of the best mode vs no drift and supersonic), and
+`outputs/mcmc_enhancement_chain.npz`.
+
+## Gadget-4 simulation plan (`cosmo_sim_plan/`)
+
+`cosmo_sim_plan/` contains the plan for seeing this instability and its
+non-linear evolution in a cosmological simulation:
+
+- `sim_plan.md` — the full design: box size / particle number from the
+  resolution requirements, two-fluid ICs via the patched N-GenIC and the
+  `ic_tables/` transfer files, how to impose the (automatically 1/a-decaying)
+  uniform relative drift, start-redshift choices, run matrix, analysis
+  quantities, and risks.
+- `Config.sh`, `param.txt` — ready-to-use Gadget-4 configuration for the
+  fiducial run (2×256³ particles, 50 ckpc box, z = 200 → 0, paper cosmology),
+  with every change from the old setup annotated.
+- `compare_temperature.py` — quantifies the `InitGasTemp` choice: compares
+  adiabatic T(z) against the TH2010 temperature (which includes partial
+  Compton coupling to the CMB) and motivates the asymptote-matched value
+  T_init = T_cmb·a₁·(1+z_start)² (916.7 K at z = 200).
+
 ## CAMB vs CLASS transfer-function conventions
 
 The two codes tabulate perturbations differently. Everything below is per
@@ -193,6 +230,8 @@ against k.
 | `generate_tables.py` | z = 1000 transfer/power tables for the ODE initial conditions |
 | `linear_growth.py` | eq. D50 solver, Figure 5 reproduction |
 | `transfer_ic_for_cosmo_sim.py` | CAMB-format IC tables for the simulation |
+| `mcmc_max_enhancement.py` | emcee search for the (k, cosθ) maximising the drift enhancement |
+| `cosmo_sim_plan/` | Gadget-4 simulation plan, configuration files, and `compare_temperature.py` |
 | `tables/` | z = 1000 tables read by `linear_growth.py` |
 | `ic_tables/` | simulation IC tables (CAMB and CLASS sets) |
 | `outputs/` | |δ_b|(z) evolution curves as text |
