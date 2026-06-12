@@ -118,6 +118,73 @@ z = 0); tightening `tol_perturbations_integration` triggers minimum-step
 failures and the alternative `evolver=0` (rk) blows up exponentially beyond
 k ≈ 2×10⁴/Mpc, so k ≳ 10⁵/Mpc is not attainable with stock classy 3.3.
 
+## CAMB vs CLASS transfer-function conventions
+
+The two codes tabulate perturbations differently. Everything below is per
+unit primordial curvature perturbation R = 1; k is in 1/Mpc (except the k/h
+column of CAMB files); ℋ ≡ aH/c is the conformal Hubble rate in 1/Mpc; θ ≡
+ik·v is the velocity divergence in 1/Mpc using conformal time (so the
+continuity equation reads dδ/dτ = −θ). These relations were all verified
+numerically in this repo (continuity-equation checks and 1–2% cross-backend
+agreement).
+
+**CLASS** (`get_transfer(z, output_format='class')` with `gauge: newtonian`):
+
+| quantity | CLASS output |
+| --- | --- |
+| densities | `d_b`, `d_cdm`, `d_g`, `d_ur` = δᵢ in the **Newtonian gauge** |
+| velocities | `t_b`, `t_cdm`, … = θᵢ [1/Mpc], Newtonian gauge |
+| metric | `phi`, `psi` (Newtonian potentials) |
+| sign | δ < 0 at late times for R = +1 |
+
+Note `t_cdm` exists only in the Newtonian gauge (in CLASS's default
+synchronous gauge it is zero by gauge fixing).
+
+**CAMB** (`get_matter_transfer_data()` / the Fortran `*_transfer_k.dat`
+files, 13 columns):
+
+| column | CAMB output |
+| --- | --- |
+| 1 | k/h [h/Mpc] |
+| 2–9 | Δᵢ/k² for cdm, b, γ, ν, massive ν, tot, no-ν, tot-de — densities in the **CDM-comoving frame** (≈ synchronous), opposite overall sign to CLASS |
+| 10 | Weyl potential: −(φ+ψ)/2 |
+| 11, 12 | v_Newt_cdm, v_Newt_baryon: Newtonian-gauge velocity transfers Tᵥ with θᵢ = −ℋ Tᵥ k² (CAMB sign) |
+| 13 | v_baryon−cdm: physical relative velocity transfer, (θ_cdm − θ_b)/k³ in CLASS sign |
+
+**Converting CLASS → CAMB columns** (as implemented in
+`transfer_ic_for_cosmo_sim.py`):
+
+```
+gauge shift to the CDM-comoving frame:   δ'ᵢ = δᵢ + 3ℋ(1+wᵢ) θ_cdm / k²
+   (wᵢ = 0 for cdm/baryons, 1/3 for photons/neutrinos)
+density column:    Tᵢ   = −δ'ᵢ / k²
+velocity columns:  Tᵥ,ᵢ = +θᵢ / (ℋ k²)
+relative velocity: T_vbc = (θ_cdm − θ_b) / k³
+Weyl column:       −(phi + psi)/2
+```
+
+The gauge shift only matters near/above the horizon for the matter columns
+(23% at k ≈ 0.007/Mpc at z = 250, <0.3% sub-horizon) but is essential at all
+k for the tiny free-streaming photon/ν columns.
+
+**Converting CAMB → CLASS conventions** (as implemented in
+`generate_tables.py`):
+
+```
+δᵢ (CLASS sign) = −Tᵢ k²
+θᵢ [1/Mpc]      = +ℋ Tᵥ,ᵢ k²
+```
+
+(Newtonian-gauge velocities are what eq. D50 needs; the residual
+Newtonian-vs-CDM-frame density difference is negligible at k = 10⁴/Mpc,
+which is deeply sub-horizon at z = 1000.)
+
+**Power spectra**: both codes normalize to the primordial spectrum
+P_R(k) = (2π²/k³) A_s (k/k_pivot)^(n_s−1). The CAMB `*_power_k.dat` files
+contain P_tot(k) = P_R(k) · (T_tot k²)² · h³ in (Mpc/h)³ against k/h; the
+CLASS-side `tables/*_power_z*.txt` use the same formula per species, in Mpc³
+against k.
+
 ## Repository layout
 
 | Path | Content |
