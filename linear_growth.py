@@ -35,6 +35,14 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from scipy.integrate import solve_ivp
+from decimal import Decimal
+
+def fexp(number):
+    (sign, digits, exponent) = Decimal(number).as_tuple()
+    return len(digits) + exponent - 1
+
+def fman(number):
+    return Decimal(number).scaleb(-fexp(number)).normalize()
 
 from cosmo_params import (
     A_INIT, C_CMS, H0_S, MPC_CM, OMEGA_B0, OMEGA_DM0, Z_INIT,
@@ -143,13 +151,14 @@ def run_backend(backend, k, dm_drag, ax):
     np.savetxt(out, np.column_stack(cols), header=hdr)
     print(f"   saved {out}")
 
+    ax.grid(True, which='both', ls=':', lw=0.5, alpha=0.7)
     ax.set_xlim(1.0 + Z_INIT, 1.0)
     ax.set_xlabel(r'$z + 1$')
     ax.set_ylabel(r'$\sqrt{|\delta_b|^2}$')
     ax.legend(loc='upper left', fontsize=8, frameon=False)
     ax.set_title(f'ICs from {backend.upper()},  $k = {k:g}\\,/{{\\rm Mpc}}$',
                  fontsize=10)
-    ax.text(0.97, 0.05, r'$k = 10^{%d}/{\rm Mpc}$' % round(np.log10(k)),
+    ax.text(0.97, 0.05, rf'$k = {fman(k)} \times 10^{{{fexp(k)}}}/{{\rm Mpc}}$',
             transform=ax.transAxes, ha='right',
             bbox=dict(boxstyle='round', fc='lightyellow', ec='olive'))
 

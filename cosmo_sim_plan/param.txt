@@ -1,0 +1,209 @@
+%  Gadget-4 parameter file for the resonant DM-baryon drift instability run
+%  (fiducial design of sim_plan.md: k_t = 1e3/Mpc, N = 256^3 per species,
+%   z_start = 200, paper cosmology of Shalaby & Broderick arXiv:2604.22665).
+%  Changes relative to the old setup are marked with  %% CHANGED / %% NEW.
+
+%----  Relevant files
+
+InitCondFile              ./ics_empty       % unused with NGENIC+CREATE_GRID;
+                                            % for the drift run point this at the
+                                            % boosted snapshot (sim_plan.md Sec. 4)
+OutputDir                 ./output_dumps/
+
+SnapshotFileBase          snapshot
+
+OutputListFilename        ./OutputList.txt  % ~60 a-values log-spaced in [1/201, 1]
+
+
+%---- File formats
+
+ICFormat                  3
+
+SnapFormat                3
+
+
+%---- CPU-time limits
+
+TimeLimitCPU            86400
+
+CpuTimeBetRestartFile   9000
+
+
+%----- Memory alloction
+
+MaxMemSize              4000
+
+
+%---- Caracteristics of run
+
+TimeBegin                 0.00497512437810945  %% CHANGED: z_start = 200 (was z=250)
+
+TimeMax	                  1.0                  %% CHANGED: run to z=0 to capture the
+                                               %% non-linear phase (was z=4)
+
+
+%---- Basic code options that set the type of simulation
+
+ComovingIntegrationOn    1
+
+
+%---- Boxsize
+
+BoxSize               0.035688493        %% CHANGED: L = pi*N/(16 k_t) = 50.27 ckpc
+                                         %% = 0.0356885 Mpc/h (k_t=1e3/Mpc = k_Ny/16,
+                                         %% k_Ny/k_F = 128; sim_plan.md Sec. 2)
+
+
+%---- Cosmological parameters  (paper cosmology, = cosmo_params.py)
+
+Omega0	              0.27           %% CHANGED (was 0.3060)
+
+OmegaLambda           0.73           %% CHANGED (was 0.69390956)
+
+OmegaBaryon           0.044          %% CHANGED (was 0.0487)
+
+OmegaCurvature        0
+
+Hubble                100.0
+
+HubbleParam           0.71           %% CHANGED (was 0.68)
+
+
+%----- Relativistic components
+%% CHANGED: block removed together with INCLUDE_RELATIVISTIC_OMEGAS in Config.sh.
+%% The paper's eq. D50 background is matter+Lambda only, H = H0 sqrt(Om/a^3 + OL);
+%% dropping the radiation contribution (~6% of H at z=200) makes the simulation
+%% directly comparable to the linear_growth.py ODE solutions.
+%% (Restore CMBTemperature/Neutrino* lines if the Config flag is kept instead.)
+
+
+%---- Output frequency and output paramaters
+
+OutputListOn              1
+
+TimeBetSnapshot           0.0
+
+TimeOfFirstSnapshot       0.0
+
+TimeBetStatistics         0.01
+
+NumFilesPerSnapshot       1        %% CHANGED: small run, single file (was 8)
+
+MaxFilesWithConcurrentIO  1        %% CHANGED (was 64)
+
+
+%---- Accuracy of time integration
+
+ErrTolIntAccuracy        0.012
+
+CourantFac               0.15      %% CHANGED: tighter than 0.3 - the science signal
+                                   %% is travelling sound waves; cheap insurance
+                                   %% against phase/damping errors
+
+MaxSizeTimestep          0.005     % dln(a); acoustic phase advances only ~4 rad
+                                   % per e-fold at k_t, so this is comfortable
+
+MinSizeTimestep          0.0
+
+
+%---- Tree algorithm, force accuracy, domain update frequency
+
+TypeOfOpeningCriterion                1
+
+ErrTolTheta                           0.75
+
+ErrTolThetaMax                        0.9
+
+ErrTolForceAcc                        0.005
+
+TopNodeFactor                         3.5
+
+
+ActivePartFracForPMinsteadOfEwald     0.01
+
+ActivePartFracForNewDomainDecomp      0.01
+
+
+%---- Initial density estimate
+
+DesNumNgb                             64
+
+MaxNumNgbDeviation                    1
+
+
+%---- System of units
+
+UnitLength_in_cm                      3.085678e24        ;  1.0 Mpc/h
+
+UnitMass_in_g                         1.989e43           ;  1.0e10 solar masses/h
+
+UnitVelocity_in_cm_per_s              1e5                ;  1 km/sec
+
+GravityConstantInternal               0
+
+
+%---- Gravitational softening length
+
+SofteningComovingClass0               4.6e-6    %% CHANGED: mean spacing/30
+                                                %% = (L/256)/30 = 4.6e-6 Mpc/h (was 0.005)
+
+SofteningMaxPhysClass0                4.6e-6    %% CHANGED (was 0.005)
+
+
+SofteningClassOfPartType0             0
+
+SofteningClassOfPartType1             0
+
+
+%----- Subfind
+
+DesLinkNgb                            20
+
+
+%----- SPH
+
+ArtBulkViscConst                      1.0     % with TIMEDEP_ART_VISC this is the
+                                              % ceiling; add ViscosityAlphaMin if your
+                                              % branch supports the time-dependent switch
+
+MinEgySpec                            0       % no temperature floor: T_b(z=0) ~ 0.02 K
+                                              % is physical, the floor must never bite
+
+InitGasTemp                           916.7   %% CHANGED (was 54.17): adiabatic track
+                                              %% matched to the TH2010 late-time asymptote,
+                                              %% T_init = T_cmb*a1*(1+z_start)^2
+                                              %% = (2.7/119)*201^2 K. See sim_plan.md
+                                              %% Sec. 5 - this makes c_s exact for z <~ 20
+                                              %% (3% high at z=10) at the price of being
+                                              %% 41% high in c_s at z=200. Matching the fit
+                                              %% value (460 K) instead would leave c_s 27%
+                                              %% low FOREVER. For z_start=127 use 371.7 K;
+                                              %% for z_start=250 use 1429.4 K.
+
+
+%----- N-GenIC
+
+GridSize                              256     % = N per dimension (sets k_Ny)
+
+SphereMode                            1
+
+ReNormalizeInputSpectrum              0       % use the CAMB normalisation (A_s below);
+                                              % Sigma8 is then ignored
+
+Sigma8                                0.8159  % unused with ReNormalizeInputSpectrum=0
+
+Seed                                  291100  % seed S1; keep IDENTICAL between the
+                                              % drift run and the no-drift control
+
+
+%----- CAMB transfer functions  (patched N-GenIC: NGENIC_CAMB_TRANSFERFUNCTION)
+
+TransferFunction_FileName_at_zinit    ../ic_tables/camb_massless_z200.000000_transfer_k.dat   %% CHANGED
+
+TransferFunction_FileName_at_z0       ../ic_tables/camb_massless_z0.000000_transfer_k.dat     %% CHANGED
+
+TransferFunction_As                   2.1e-9    %% CHANGED (was 2.0768265e-09): cosmo_params.A_S
+
+TransferFunction_Kpivot               0.05
+
+TransferFunction_SpectralIndex        0.965     %% CHANGED (was 0.969): cosmo_params.N_S
