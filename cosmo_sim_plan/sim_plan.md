@@ -172,12 +172,72 @@ Because the patched N-GenIC creates ICs **on the fly** at startup
    is compiled in, Gadget-4 regenerates ICs instead of reading the file).
 2. **Patch route**: the N-GenIC code is already patched in this branch;
    adding a `BaryonDriftVelocity` parameter that applies the split boost at
-   creation time is a few lines and avoids the double build.
+   creation time is a few lines and avoids the double build — see "Where to
+   patch N-GenIC" below.
 
 **Gadget velocity convention (pitfall!)**: cosmological Gadget HDF5
 ICs/snapshots store u = v_pec/√a. The boost added to the `Velocities`
 dataset must therefore be Δv_pec/√a_start — at z = 200 that is
 u_DM = +12.78 and u_gas = −65.63 in code velocity units (km/s).
+
+### Where to patch N-GenIC (source in `cosmo_sim_plan/gadget4_src/`)
+
+Three small edits (line numbers refer to this branch's source):
+
+1. **`ngenic/ngenic.cc`, `ngenic::ngenic_displace_particles()` — the boost
+   itself.** The natural insertion point is right after the final loop
+   commented `// now add displacements to Lagrangian unperturbed coordinates`
+   (≈ line 229): at that point all displacement and velocity perturbations
+   for *both* species have been accumulated into `Sp->P[n].Vel[]`, and the
+   particle type (0 = gas, 1 = DM) is queryable via `Sp->P[n].getType()`.
+   Insert (before the `Vel == 0` sanity-check loop and the
+   `NGENIC_CAMB_TRANSFERFUNCTION` diagnostics block):
+
+   ```c++
+   #ifdef NGENIC_CREATE_BARYONS
+     if(All.BaryonDriftVelocity != 0)
+       {
+         /* momentum-conserving uniform DM-baryon drift along z.
+          * Vel here is already in the Gadget convention u = v_pec/sqrt(a),
+          * so the physical boost must be divided by sqrt(a) too. */
+         double sa   = sqrt(All.cf_atime);
+         double ugas = -(All.Omega0 - All.OmegaBaryon) / All.Omega0 * All.BaryonDriftVelocity / sa;
+         double udm  = All.OmegaBaryon / All.Omega0 * All.BaryonDriftVelocity / sa;
+         for(int n = 0; n < Sp->NumPart; n++)
+           Sp->P[n].Vel[2] += (Sp->P[n].getType() == 0) ? ugas : udm;
+         mpi_printf("NGENIC: uniform baryon-DM drift v_bc=%g km/s along z (u_gas=%g, u_dm=%g)\n",
+                    All.BaryonDriftVelocity, ugas, udm);
+       }
+   #endif
+   ```
+
+   That `Vel` is in u = v_pec/√a units *inside* N-GenIC is explicit in the
+   code: the velocity prefactors carry
+   `vel_prefac... /= sqrt(All.cf_atime); // converts to Gadget velocity`
+   (`ngenic.cc` lines 547–548 and 617–618). `All.cf_atime = TimeBegin` at IC
+   creation, and the code velocity unit is km/s, so the parameter takes the
+   *physical* peculiar v_bc directly.
+
+2. **`data/allvars.h`** (≈ line 374, inside the `#ifdef NGENIC` block next
+   to the `TransferFunction_As` declaration at ≈ line 382): declare
+   `double BaryonDriftVelocity;`.
+
+3. **`data/allvars.cc`** (≈ line 213, next to the
+   `add_param("TransferFunction_As", ...)` registrations): add
+   `add_param("BaryonDriftVelocity", &BaryonDriftVelocity, PARAM_DOUBLE, PARAM_FIXED);`.
+
+Then set `BaryonDriftVelocity 5.530` in `param.txt` for the fiducial drift
+run (Sec. 1 table gives v_bc at other start redshifts) and
+`BaryonDriftVelocity 0` for the control — one executable for all runs, same
+seed, no h5py post-processing. For orientation: the two-fluid velocity
+*perturbations* are assigned a few lines above the insertion point by the
+`ngenic_displace_particles_with_field(FIELD_BARYONS, ..., 0, 1)` /
+`(FIELD_DARKMATTER, ..., 0, ~1)` calls (≈ lines 180–184), whose last
+argument is the particle-type mask for velocity updates — the uniform boost
+deliberately goes *after* both, so it adds to whatever perturbative
+velocities the patch assigned. The two-step snapshot route (option 1)
+remains the no-code-changes fallback and a useful cross-check that both
+routes produce identical drift runs.
 
 ### The 1/a decay is automatic — do not force it
 
