@@ -196,6 +196,15 @@ Seed                                  291100  % seed S1; keep IDENTICAL between 
                                               % drift run and the no-drift control
 
 
+%----- Uniform DM-baryon drift (requires the N-GenIC patch of sim_plan.md
+%      Sec. 4: BaryonDriftVelocity in ngenic.cc + allvars.h/.cc).
+%      Physical peculiar v_bc in km/s, applied as a momentum-conserving
+%      split along z; 5.530 km/s at z_start=200; set 0 for the control run.
+%      Leave commented out until the patch is compiled in.
+
+%BaryonDriftVelocity                  5.530
+
+
 %----- CAMB transfer functions  (patched N-GenIC: NGENIC_CAMB_TRANSFERFUNCTION)
 
 TransferFunction_FileName_at_zinit    ../ic_tables/camb_massless_z200.000000_transfer_k.dat   %% CHANGED

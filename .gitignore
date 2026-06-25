@@ -13,6 +13,9 @@ paper.pdf
 paper_src.tar
 paper_src/
 
+# Gadget-4 source tree (kept locally, not part of this repo)
+cosmo_sim_plan/gadget4_src/
+
 # local tooling / session files
 .claude/
 2026-*.txt
