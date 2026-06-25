@@ -8,5 +8,5 @@ n_s = 0.965
 k_pivot = 0.05 1/Mpc
 massless neutrinos N_ur = 3.046, no massive neutrinos
 redshifts = [1000.0, 900.0, 250.0, 200.0, 127.0, 0.0]
-kmax = 30000.0 1/Mpc
+kmax = 90000.0 1/Mpc
 cosmology of Shalaby & Broderick 2026 (arXiv:2604.22665)

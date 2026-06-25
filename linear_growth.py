@@ -46,10 +46,13 @@ def fman(number):
 
 from cosmo_params import (
     A_INIT, C_CMS, H0_S, MPC_CM, OMEGA_B0, OMEGA_DM0, Z_INIT,
-    hubble_norm, sound_speed_cms, v_dm_cms, primordial_curvature_rms,
+    hubble_norm, sound_speed_cms, sound_speed_adiabatic_asymptote_cms, 
+    v_dm_cms, primordial_curvature_rms,
 )
 
 TABLE_DIR = "tables"
+use_adiabatic_asymptote = False
+z_start_sim = 250.0
 
 # the four cases of Figure 5: (label, cos(theta), drift on, color, linestyle)
 FIG5_CASES = [
@@ -100,7 +103,10 @@ def rhs(s, y, k, cos_theta, drift, dm_drag):
     delta_b, t_b, delta_c, t_c = y
 
     grav = 1.5 / (a**3 * h) * (OMEGA_B0 * delta_b + OMEGA_DM0 * delta_c)
-    press = (sound_speed_cms(a) * k / MPC_CM)**2 / (a**2 * H * H0_S) * delta_b
+    if not use_adiabatic_asymptote:
+        press = (sound_speed_cms(a) * k / MPC_CM)**2 / (a**2 * H * H0_S) * delta_b
+    else:
+        press = (sound_speed_adiabatic_asymptote_cms(a, z_start_sim) * k / MPC_CM)**2 / (a**2 * H * H0_S) * delta_b  
 
     if drift:
         K = k / MPC_CM * v_dm_cms(a) * cos_theta / (a * H)
@@ -183,9 +189,9 @@ def main():
     for ax, backend in zip(axes[0], backends):
         run_backend(backend, args.k, not args.no_dm_drag, ax)
 
-    fig.suptitle('Cosmological evolution of the baryon density perturbation\n'
-                 '(reproduction of Fig. 5, Shalaby & Broderick, arXiv:2604.22665)',
-                 fontsize=11)
+    # fig.suptitle('Cosmological evolution of the baryon density perturbation\n'
+    #              '(reproduction of Fig. 5, Shalaby & Broderick, arXiv:2604.22665)',
+    #              fontsize=11)
     fig.tight_layout(rect=(0, 0, 1, 0.93))
     out = args.out or f"figure5_{args.backend}.png"
     fig.savefig(out, dpi=200)

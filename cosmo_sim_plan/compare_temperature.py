@@ -49,7 +49,8 @@ def main():
     zs = args.z_start
 
     T_fit_init = baryon_temperature(1.0 / (1.0 + zs))
-    T_asym_init = T_CMB_K * A1_FIT * (1.0 + zs) ** 2
+    # T_asym_init = T_CMB_K * A1_FIT * (1.0 + zs) ** 2
+    T_asym_init = baryon_temperature(1.0) * (1.0 + zs) ** 2
     print(f"z_start = {zs:g}:")
     print(f"  fit-matched       InitGasTemp = {T_fit_init:8.1f} K")
     print(f"  asymptote-matched InitGasTemp = {T_asym_init:8.1f} K   <- recommended")

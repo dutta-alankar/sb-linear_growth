@@ -44,11 +44,11 @@ def write_table(fname, header, cols):
     print(f"  wrote {path}  ({len(cols[0])} rows)")
 
 
-def run_class(kmax):
+def run_class(kmax, k_per_decade=100):
     from classy import Class
 
     print(f"CLASS: computing transfer functions up to k = {kmax:.3g}/Mpc "
-          f"at z = {Z_INIT:g} ...")
+          f"at z = {Z_INIT:g} ({k_per_decade} k/decade) ...")
     t0 = time.time()
     cosmo = Class()
     cosmo.set({
@@ -61,6 +61,7 @@ def run_class(kmax):
         'n_s': N_S,
         'k_pivot': K_PIVOT,
         'P_k_max_1/Mpc': kmax,
+        'k_per_decade_for_pk': k_per_decade,
         'z_pk': f'{Z_INIT:g}',
         'z_max_pk': Z_INIT + 50.0,
         'matter_source_in_current_gauge': 'yes',
@@ -92,18 +93,20 @@ def run_class(kmax):
     cosmo.struct_cleanup()
 
 
-def run_camb(kmax):
+def run_camb(kmax, k_per_decade=100):
     import camb
     from camb import model
 
+    # CAMB samples per natural-log interval; convert from per-decade.
+    k_per_logint = int(round(k_per_decade / np.log(10.0)))
     print(f"CAMB: computing transfer functions up to k = {kmax:.3g}/Mpc "
-          f"at z = {Z_INIT:g} ...")
+          f"at z = {Z_INIT:g} ({k_per_decade} k/decade -> k_per_logint={k_per_logint}) ...")
     t0 = time.time()
     pars = camb.set_params(
         H0=H0_KMS_MPC, ombh2=OMEGA_B0 * LITTLE_H**2, omch2=OMEGA_DM0 * LITTLE_H**2,
         As=A_S, ns=N_S, pivot_scalar=K_PIVOT, omk=0.0,
     )
-    pars.set_matter_power(redshifts=[Z_INIT], kmax=kmax, k_per_logint=30,
+    pars.set_matter_power(redshifts=[Z_INIT], kmax=kmax, k_per_logint=k_per_logint,
                           accurate_massive_neutrino_transfers=False)
     pars.Transfer.high_precision = True
     res = camb.get_results(pars)
@@ -146,12 +149,14 @@ def main():
     ap.add_argument('--kmax', type=float, default=1.2e4,
                     help='max wavenumber in 1/Mpc (default 1.2e4, must exceed the '
                          'k used in linear_growth.py)')
+    ap.add_argument('--k-per-decade', type=int, default=100,
+                    help='CLASS k sampling density k_per_decade_for_pk (default 100)')
     args = ap.parse_args()
 
     if args.backend in ('class', 'both'):
-        run_class(args.kmax)
+        run_class(args.kmax, args.k_per_decade)
     if args.backend in ('camb', 'both'):
-        run_camb(args.kmax)
+        run_camb(args.kmax, args.k_per_decade)
 
 
 if __name__ == '__main__':

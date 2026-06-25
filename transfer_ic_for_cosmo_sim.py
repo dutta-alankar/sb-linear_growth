@@ -82,7 +82,8 @@ def emit(root, z, k_mpc, cols13):
 def run_camb(redshifts, kmax, k_per_decade, root):
     import camb
     from camb import model
-
+    
+    k_per_logint = int(round(k_per_decade / np.log(10.0)))
     print(f"CAMB: transfer functions at z = {redshifts}, kmax = {kmax:.3g}/Mpc ...")
     t0 = time.time()
     pars = camb.set_params(
@@ -90,7 +91,7 @@ def run_camb(redshifts, kmax, k_per_decade, root):
         As=A_S, ns=N_S, pivot_scalar=K_PIVOT, omk=0.0, mnu=0.0, nnu=N_UR,
     )
     pars.set_matter_power(redshifts=sorted(redshifts), kmax=kmax,
-                          k_per_logint=k_per_decade)
+                          k_per_logint=k_per_logint)
     pars.Transfer.high_precision = True
     # NB: do not raise AccuracyBoost here - boosted tolerances make CAMB's
     # Dverk integrator fail (error -3) for kmax above ~1e4/Mpc

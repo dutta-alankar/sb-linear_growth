@@ -50,10 +50,28 @@ def baryon_temperature(a):
     return (T_CMB_K / a) / (1.0 + (a / A1_FIT) / (1.0 + (A2_FIT / a) ** 1.5))
 
 
+def adiabatic_baryon_temperature(z, z_start, T_init):
+    """T(z) for gamma=5/3 adiabatic expansion from T_init at z_start."""
+    return T_init * ((1.0 + z) / (1.0 + z_start)) ** 2
+
+
+def asymptote_baryon_temperature(z, zstart):
+    """T(z) for the TH2010 asymptote T_b -> T_cmb a1 / a^2."""
+    # T_asym_init = T_CMB_K * A1_FIT * (1.0 + zstart) ** 2
+    T_asym_init = baryon_temperature(1.0) * (1.0 + zstart) ** 2 
+    # T_asym_init = baryon_temperature(1.0 / (1.0 + zstart)) * (1.0 + zstart) ** 2 
+    return adiabatic_baryon_temperature(z, zstart, T_asym_init)
+
+
 def sound_speed_cms(a):
     """Baryon sound speed c_s(a) in cm/s."""
     return np.sqrt(GAMMA_AD * KB_CGS * baryon_temperature(a) / (MU_MOL * MPROTON_G))
 
+
+def sound_speed_adiabatic_asymptote_cms(a, zstart):
+    """Baryon sound speed c_s(a) in cm/s."""
+    z = 1.0 / a - 1.0
+    return np.sqrt(GAMMA_AD * KB_CGS * asymptote_baryon_temperature(z, zstart) / (MU_MOL * MPROTON_G))
 
 def v_dm_cms(a):
     """DM-baryon relative drift speed, v_DM = 5 c_s(a_i) * (a_i/a), in cm/s."""
