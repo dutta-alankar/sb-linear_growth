@@ -5,6 +5,8 @@ The background cosmology is the one quoted below their Eq. (D50):
 Omega_b0 = 0.044, Omega_DM0 = 0.226, Omega_Lambda0 = 0.73, H0 = 71 km/s/Mpc.
 """
 
+import os
+
 import numpy as np
 
 # --- background cosmology (paper, Appendix D) ---
@@ -81,6 +83,43 @@ def sound_speed_adiabatic_fit_cms(a, zstart):
     """Baryon sound speed c_s(a) in cm/s."""
     z = 1.0 / a - 1.0
     return np.sqrt(GAMMA_AD * KB_CGS * fit_baryon_temperature(z, zstart) / (MU_MOL * MPROTON_G))
+
+# --- optional: mean baryon temperature from CLASS or CAMB instead of the TH2010 fit ---
+# tables/{class,camb}_baryon_temperature.txt (z, T_b [K], x_e) are written by
+# 'python generate_tables.py --temperature-only'; Gadget-4 reads such a table with CLASS_ENTROPY_FLOOR
+# (parameter CMBHeatingTemperatureTable). NB: CLASS's T_b rises again after reionisation (z < 9), CAMB's does not.
+TB_TABLE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "tables")
+_tb_splines = {}
+
+
+def tb_table_path(code):
+    """path of the T_b(z) table of code = 'class' or 'camb'"""
+    return os.path.join(TB_TABLE_DIR, f"{code}_baryon_temperature.txt")
+
+
+def table_baryon_temperature(a, code="class"):
+    """T_b(a) in K from the thermal history of code = 'class' or 'camb': cubic spline of ln T_b in ln a (as in
+    Gadget-4)."""
+    if code not in _tb_splines:
+        from scipy.interpolate import CubicSpline
+        path = tb_table_path(code)
+        if not os.path.exists(path):
+            raise FileNotFoundError(f"{path} not found - run 'python generate_tables.py --backend {code} "
+                                    f"--temperature-only'")
+        z, tb = np.loadtxt(path, usecols=(0, 1), unpack=True)
+        o = np.argsort(z)[::-1]                                    # increasing a
+        _tb_splines[code] = CubicSpline(-np.log1p(z[o]), np.log(tb[o]), bc_type="natural")
+    spl = _tb_splines[code]
+    lna = np.log(a)
+    if np.any(lna < spl.x[0] - 1e-10) or np.any(lna > spl.x[-1] + 1e-10):
+        raise ValueError(f"a outside the range of {tb_table_path(code)}")
+    return np.exp(spl(lna))
+
+
+def sound_speed_table_cms(a, code="class"):
+    """Baryon sound speed c_s(a) in cm/s, c_s^2 = gamma k_B T_b / (mu m_p) with T_b(a) from CLASS or CAMB."""
+    return np.sqrt(GAMMA_AD * KB_CGS * table_baryon_temperature(a, code) / (MU_MOL * MPROTON_G))
+
 
 def v_dm_cms(a):
     """DM-baryon relative drift speed, v_DM = 5 c_s(a_i) * (a_i/a), in cm/s."""

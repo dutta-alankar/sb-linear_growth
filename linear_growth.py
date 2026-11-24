@@ -24,7 +24,7 @@ sqrt(A_s (k/k_pivot)^(n_s-1)).
 
 Usage:
     python linear_growth.py [--backend class|camb|both] [--k 1e4]
-                            [--no-dm-drag] [--out FIG.png]
+                            [--no-dm-drag] [--temperature th2010|class|camb] [--out FIG.png]
 """
 
 import argparse
@@ -47,16 +47,38 @@ def fman(number):
 from cosmo_params import (
     A_INIT, C_CMS, H0_S, MPC_CM, OMEGA_B0, OMEGA_DM0, Z_INIT,
     hubble_norm, sound_speed_cms, sound_speed_adiabatic_asymptote_cms, 
-    sound_speed_adiabatic_fit_cms,
+    sound_speed_adiabatic_fit_cms, sound_speed_table_cms,
     v_dm_cms, primordial_curvature_rms,
 )
 
 TABLE_DIR = "tables"
 use_adiabatic_asymptote = False  # if True, use the adiabatic asymptote for c_s in the linear evolution
 use_adiabatic_fit = False  # if True, use the adiabatic fit for c_s in the linear evolution
+# mean baryon temperature in c_s^2 = gamma k_B T_b / (mu m_p): 'th2010' (fit, default), or 'class' / 'camb' for the
+# T_b(z) tables tables/{class,camb}_baryon_temperature.txt written by 'generate_tables.py --temperature-only';
+# set with --temperature
+baryon_temperature_model = 'th2010'
 
 if use_adiabatic_asymptote and use_adiabatic_fit:
     raise ValueError("Cannot use both adiabatic asymptote and fit for c_s; choose one.")
+
+
+def check_sound_speed_options():
+    if baryon_temperature_model not in ('th2010', 'class', 'camb'):
+        raise ValueError(f"unknown baryon_temperature_model '{baryon_temperature_model}'")
+    if baryon_temperature_model != 'th2010' and (use_adiabatic_asymptote or use_adiabatic_fit):
+        raise ValueError("a CLASS/CAMB temperature cannot be combined with the adiabatic asymptote / fit options.")
+
+
+def output_suffix():
+    """file-name suffix of the chosen sound-speed model"""
+    if baryon_temperature_model != 'th2010':
+        return f"_{baryon_temperature_model}_Tb"
+    if use_adiabatic_asymptote:
+        return "_adiabatic_asymptote"
+    if use_adiabatic_fit:
+        return "_adiabatic_fit"
+    return ""
 
 z_start_sim = 250.0
 
@@ -109,7 +131,9 @@ def rhs(s, y, k, cos_theta, drift, dm_drag):
     delta_b, t_b, delta_c, t_c = y
 
     grav = 1.5 / (a**3 * h) * (OMEGA_B0 * delta_b + OMEGA_DM0 * delta_c)
-    if not use_adiabatic_asymptote and not use_adiabatic_fit:
+    if baryon_temperature_model != 'th2010':
+        press = (sound_speed_table_cms(a, baryon_temperature_model) * k / MPC_CM)**2 / (a**2 * H * H0_S) * delta_b
+    elif not use_adiabatic_asymptote and not use_adiabatic_fit:
         press = (sound_speed_cms(a) * k / MPC_CM)**2 / (a**2 * H * H0_S) * delta_b
     elif use_adiabatic_asymptote:
         press = (sound_speed_adiabatic_asymptote_cms(a, z_start_sim) * k / MPC_CM)**2 / (a**2 * H * H0_S) * delta_b
@@ -215,12 +239,7 @@ def run_backend(backend, k, dm_drag, ax_b, ax_c):
     case_list = "; ".join(l.replace('$', '').replace('\\', '') for l in curves)
     hdr = ("Evolution of |delta_b| and |delta_c| for k = %g /Mpc (Fig. 5, arXiv:2604.22665)\n"
            "z+1, then |delta_b| for cases, then |delta_c| for cases: " % k + case_list)
-    if not use_adiabatic_asymptote and not use_adiabatic_fit:
-        out = os.path.join("outputs", f"delta_bc_evolution_{backend}_k{k:g}.txt")
-    elif use_adiabatic_asymptote:
-        out = os.path.join("outputs", f"delta_bc_evolution_{backend}_k{k:g}_adiabatic_asymptote.txt")
-    elif use_adiabatic_fit:
-        out = os.path.join("outputs", f"delta_bc_evolution_{backend}_k{k:g}_adiabatic_fit.txt")
+    out = os.path.join("outputs", f"delta_bc_evolution_{backend}_k{k:g}{output_suffix()}.txt")
     np.savetxt(out, np.column_stack(cols), header=hdr)
     print(f"   saved {out}")
 
@@ -252,8 +271,15 @@ def main():
     ap.add_argument('--no-dm-drag', action='store_true',
                     help='drop the -2 t_DM Hubble-drag term, i.e. integrate '
                          'Eq. D50 exactly as printed in the paper')
+    ap.add_argument('--temperature', choices=['th2010', 'class', 'camb'], default=None,
+                    help='mean baryon temperature in the sound speed: the Tseliakhovich & Hirata (2010) fit '
+                         '(default) or the CLASS / CAMB T_b(z) table written by generate_tables.py --temperature-only')
     ap.add_argument('--out', default=None, help='output figure name')
     args = ap.parse_args()
+    global baryon_temperature_model
+    if args.temperature is not None:
+        baryon_temperature_model = args.temperature
+    check_sound_speed_options()
 
     backends = ['class', 'camb'] if args.backend == 'both' else [args.backend]
     # rows: delta_b (top), delta_c (bottom); columns: one per backend
@@ -266,12 +292,7 @@ def main():
     #              '(reproduction of Fig. 5, Shalaby & Broderick, arXiv:2604.22665)',
     #              fontsize=11)
     fig.tight_layout(rect=(0, 0, 1, 0.93))
-    if not use_adiabatic_asymptote and not use_adiabatic_fit:
-        out = args.out or f"figure5_{args.backend}.png"
-    elif use_adiabatic_asymptote:
-        out = args.out or f"figure5_{args.backend}_adiabatic_asymptote.png"
-    elif use_adiabatic_fit:
-        out = args.out or f"figure5_{args.backend}_adiabatic_fit.png"
+    out = args.out or f"figure5_{args.backend}{output_suffix()}.png"
     fig.savefig(out, dpi=200)
     print(f"figure saved to {out}")
 
