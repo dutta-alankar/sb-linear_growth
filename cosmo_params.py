@@ -59,8 +59,12 @@ def asymptote_baryon_temperature(z, zstart):
     """T(z) for the TH2010 asymptote T_b -> T_cmb a1 / a^2."""
     # T_asym_init = T_CMB_K * A1_FIT * (1.0 + zstart) ** 2
     T_asym_init = baryon_temperature(1.0) * (1.0 + zstart) ** 2 
-    # T_asym_init = baryon_temperature(1.0 / (1.0 + zstart)) * (1.0 + zstart) ** 2 
     return adiabatic_baryon_temperature(z, zstart, T_asym_init)
+
+def fit_baryon_temperature(z, zstart):
+    """T(z) for the TH2010 fit T_b(zstart) at z_start, then adiabatic expansion."""
+    T_fit_init = baryon_temperature(1.0/(1.0 + zstart)) 
+    return adiabatic_baryon_temperature(z, zstart, T_fit_init)
 
 
 def sound_speed_cms(a):
@@ -73,6 +77,11 @@ def sound_speed_adiabatic_asymptote_cms(a, zstart):
     z = 1.0 / a - 1.0
     return np.sqrt(GAMMA_AD * KB_CGS * asymptote_baryon_temperature(z, zstart) / (MU_MOL * MPROTON_G))
 
+def sound_speed_adiabatic_fit_cms(a, zstart):
+    """Baryon sound speed c_s(a) in cm/s."""
+    z = 1.0 / a - 1.0
+    return np.sqrt(GAMMA_AD * KB_CGS * fit_baryon_temperature(z, zstart) / (MU_MOL * MPROTON_G))
+
 def v_dm_cms(a):
     """DM-baryon relative drift speed, v_DM = 5 c_s(a_i) * (a_i/a), in cm/s."""
     return VDM_OVER_CS_INIT * sound_speed_cms(A_INIT) * (A_INIT / a)
@@ -81,3 +90,20 @@ def v_dm_cms(a):
 def primordial_curvature_rms(k):
     """sqrt(P_R(k)) per ln k: dimensionless curvature amplitude at wavenumber k [1/Mpc]."""
     return np.sqrt(A_S * (k / K_PIVOT) ** (N_S - 1.0))
+
+if __name__ == "__main__":
+    import matplotlib.pyplot as plt
+    zp1 = np.logspace(0, np.log10( 1.0 + Z_INIT), 400)
+    a_vals = 1.0 / zp1
+    cs = sound_speed_cms(a_vals)
+    Tb = baryon_temperature(a_vals)
+    vrel = v_dm_cms(a_vals)
+
+    plt.figure(figsize=(8, 6))
+    plt.semilogx(zp1, vrel/cs, label=r'$v_{\rm DM}/c_s$', color='k')
+    plt.xlim(1.0 + Z_INIT, 1.0)
+    plt.xlabel('1+z')
+    plt.ylabel('Mach number')
+    plt.grid(True, which='both', ls='--', lw=0.5)
+    plt.title('Mach number evolution')
+    plt.show()
