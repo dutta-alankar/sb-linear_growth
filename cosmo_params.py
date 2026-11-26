@@ -35,7 +35,9 @@ MPROTON_G = 1.67262192369e-24
 H0_S = H0_KMS_MPC * 1.0e5 / MPC_CM  # H0 in 1/s
 
 # --- baryon temperature fit (TH2010 / paper Appendix D) ---
-T_CMB_K = 2.7
+# T_CMB,0 = 2.7255 K (Fixsen 2009), as in CLASS / CAMB and in the Gadget-4 CMB_HEATING floor; the paper's TH2010
+# fit was quoted with 2.7 K. It also sets the drift through v_DM = 5 c_s(z = 1000) (+0.47 % w.r.t. 2.7 K).
+T_CMB_K = 2.7255
 A1_FIT = 1.0 / 119.0
 A2_FIT = 1.0 / 115.0
 MU_MOL = 1.22

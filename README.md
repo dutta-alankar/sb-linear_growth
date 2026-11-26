@@ -35,7 +35,8 @@ All commands below use the venv's interpreter directly
 Single source of truth for the paper's cosmology (Ω_b0 = 0.044,
 Ω_DM0 = 0.226, Ω_Λ0 = 0.73, H0 = 71 km/s/Mpc), the assumed primordial
 spectrum (A_s = 2.1×10⁻⁹, n_s = 0.965 — not quoted in the paper), the
-Tseliakhovich & Hirata (2010) baryon temperature / sound-speed fit, the drift
+Tseliakhovich & Hirata (2010) baryon temperature / sound-speed fit (with
+T_CMB,0 = 2.7255 K, as in CLASS, CAMB and the Gadget-4 simulations), the drift
 law v_DM(a) = 5 c_s(a_i)·(a_i/a) with a_i = 1/1001, and unit conversions.
 Imported by every other script; edit here to change the cosmology everywhere.
 
@@ -153,7 +154,7 @@ non-linear evolution in a cosmological simulation:
 - `compare_temperature.py` — quantifies the `InitGasTemp` choice: compares
   adiabatic T(z) against the TH2010 temperature (which includes partial
   Compton coupling to the CMB) and motivates the asymptote-matched value
-  T_init = T_cmb·a₁·(1+z_start)² (916.7 K at z = 200).
+  T_init = T_cmb·a₁·(1+z_start)² (925.3 K at z = 200).
 
 ## CAMB vs CLASS transfer-function conventions
 
